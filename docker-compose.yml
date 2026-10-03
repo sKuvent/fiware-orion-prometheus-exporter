@@ -1,0 +1,46 @@
+services:
+  orion-exporter:
+    build:
+      context: .
+      dockerfile: Dockerfile
+
+    container_name: orion-prometheus-exporter
+
+    restart: unless-stopped
+
+    environment:
+      ORION_BASE_URL: ${ORION_BASE_URL:-http://orion:1026}
+      EXPORTER_PORT: 7001
+      SCRAPE_INTERVAL_SECS: 30
+      REQUEST_TIMEOUT_SECS: 4
+      LOG_LEVEL: INFO
+
+    ports:
+      - "7001:7001"
+
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request; urllib.request.urlopen('http://localhost:7001/health', timeout=2)"
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+
+  prometheus:
+    image: prom/prometheus:v3.13.4-distroless
+
+    container_name: prometheus
+
+    restart: unless-stopped
+
+    ports:
+      - "9090:9090"
+
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+
+    depends_on:
+      - orion-exporter
